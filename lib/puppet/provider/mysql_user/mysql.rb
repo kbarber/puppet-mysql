@@ -8,6 +8,19 @@ Puppet::Type.type(:mysql_user).provide(:mysql,
 	commands :mysql => '/usr/bin/mysql'
 	commands :mysqladmin => '/usr/bin/mysqladmin'
 
+	# retrieve the current set of mysql users
+	def self.instances
+		users = []
+
+		cmd = "#{command(:mysql)} mysql -NBe 'select concat(user, \"@\", host), password from user'"
+		execpipe(cmd) do |process|
+			process.each do |line|
+				users << new( query_line_to_hash(line) )
+			end
+		end
+		return users
+	end
+
 	def self.query_line_to_hash(line)
 		fields = line.chomp.split(/\t/)
 		{
@@ -57,7 +70,7 @@ Puppet::Type.type(:mysql_user).provide(:mysql,
 	end
 
 	def exists?
-		not mysql("--defaults-file=/etc/mysql/debian.cnf", "mysql", "-NBe", "select '1' from user where CONCAT(user, '@', host) = '%s'" % @resource[:name]).empty?
+		not mysql("--defaults-file=/root/.my.cnf", "mysql", "-NBe", "select '1' from user where CONCAT(user, '@', host) = '%s'" % @resource[:name]).empty?
 	end
 
 	def password_hash
@@ -65,7 +78,7 @@ Puppet::Type.type(:mysql_user).provide(:mysql,
 	end
 
 	def password_hash=(string)
-		mysql "--defaults-file=/etc/mysql/debian.cnf", "mysql", "-e", "SET PASSWORD FOR '%s' = '%s'" % [ @resource[:name].sub("@", "'@'"), string ]
+		mysql "--defaults-file=/root/.my.cnf", "mysql", "-e", "SET PASSWORD FOR '%s' = '%s'" % [ @resource[:name].sub("@", "'@'"), string ]
 		mysql_flush
 	end
 end

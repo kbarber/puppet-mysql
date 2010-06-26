@@ -3,6 +3,19 @@ require 'puppet/provider/package'
 Puppet::Type.type(:mysql_database).provide(:mysql,
 		:parent => Puppet::Provider::Package) do
 
+	# retrieve the current set of mysql databases
+	def self.instances
+		dbs = []
+
+		cmd = "#{command(:mysql)} -NBe 'show databases'"
+		execpipe(cmd) do |process|
+			process.each do |line|
+				dbs << new( { :ensure => :present, :name => line.chomp } )
+			end
+		end
+		return dbs
+	end
+
 	desc "Use mysql as database."
 	commands :mysqladmin => '/usr/bin/mysqladmin'
 	commands :mysql => '/usr/bin/mysql'
